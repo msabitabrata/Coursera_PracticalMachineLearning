@@ -320,19 +320,28 @@ dt_train <- data_training[inTrain,]
 dt_test <- data_training[-inTrain,]
 ```
 
+Setting Up Cross Validation
+---------------------------
+
+We will use 5-fold cross validation to get an unbiased estimate of out of sample error.
+
+``` r
+train_control <- trainControl(method="cv",number=5,allowParallel = TRUE)
+```
+
 Decision Tree
 -------------
 
 Let us train the decision tree model and find out the accuracy of the model for the training data.
 
 ``` r
-modelDecisionTree <- rpart(classe~., data=dt_train)
+modelDecisionTree <- train(classe~., data=dt_train, method = "rpart", trControl = train_control )
 ```
 
 Now we will test the model by applying it onto the testing data that was randomly partitioned from the original training data.
 
 ``` r
-predictDecisionTree <- predict(modelDecisionTree, dt_test, type="class")
+predictDecisionTree <- predict(modelDecisionTree, dt_test)
 confusionMatrix(predictDecisionTree, dt_test$classe)
 ```
 
@@ -340,33 +349,33 @@ confusionMatrix(predictDecisionTree, dt_test$classe)
     ## 
     ##           Reference
     ## Prediction    A    B    C    D    E
-    ##          A 1003  165    9   77   12
-    ##          B   21  390   72   23   50
-    ##          C   36   64  542  101   92
-    ##          D   33   58   45  408   36
-    ##          E   23   82   16   34  531
+    ##          A 1008  331  297  305  111
+    ##          B   15  246   21  106  101
+    ##          C   89  182  366  232  191
+    ##          D    0    0    0    0    0
+    ##          E    4    0    0    0  318
     ## 
     ## Overall Statistics
     ##                                           
-    ##                Accuracy : 0.7326          
-    ##                  95% CI : (0.7185, 0.7464)
+    ##                Accuracy : 0.494           
+    ##                  95% CI : (0.4782, 0.5098)
     ##     No Information Rate : 0.2845          
     ##     P-Value [Acc > NIR] : < 2.2e-16       
     ##                                           
-    ##                   Kappa : 0.6604          
-    ##  Mcnemar's Test P-Value : < 2.2e-16       
+    ##                   Kappa : 0.3385          
+    ##  Mcnemar's Test P-Value : NA              
     ## 
     ## Statistics by Class:
     ## 
     ##                      Class: A Class: B Class: C Class: D Class: E
-    ## Sensitivity            0.8987  0.51383   0.7924   0.6345   0.7365
-    ## Specificity            0.9063  0.94753   0.9095   0.9476   0.9516
-    ## Pos Pred Value         0.7923  0.70144   0.6491   0.7034   0.7741
-    ## Neg Pred Value         0.9575  0.89041   0.9540   0.9297   0.9413
-    ## Prevalence             0.2845  0.19347   0.1744   0.1639   0.1838
-    ## Detection Rate         0.2557  0.09941   0.1382   0.1040   0.1354
-    ## Detection Prevalence   0.3227  0.14173   0.2128   0.1478   0.1749
-    ## Balanced Accuracy      0.9025  0.73068   0.8510   0.7910   0.8440
+    ## Sensitivity            0.9032  0.32411   0.5351   0.0000  0.44105
+    ## Specificity            0.6281  0.92320   0.7857   1.0000  0.99875
+    ## Pos Pred Value         0.4912  0.50307   0.3453      NaN  0.98758
+    ## Neg Pred Value         0.9423  0.85061   0.8889   0.8361  0.88809
+    ## Prevalence             0.2845  0.19347   0.1744   0.1639  0.18379
+    ## Detection Rate         0.2569  0.06271   0.0933   0.0000  0.08106
+    ## Detection Prevalence   0.5231  0.12465   0.2702   0.0000  0.08208
+    ## Balanced Accuracy      0.7656  0.62365   0.6604   0.5000  0.71990
 
 Accuracy of the decision tree model is given below.
 
@@ -375,9 +384,9 @@ confusionMatrix(predictDecisionTree, dt_test$classe)$overall["Accuracy"]
 ```
 
     ##  Accuracy 
-    ## 0.7326026
+    ## 0.4940097
 
-The accuracy of the decision tree algorithm is very low. Let us try some other algorithm to fit the model.
+The accuracy of the decision tree algorithm is very low and the out of sample error is 1 - 0.494 = 0.506. Let us try some other algorithm to fit the model.
 
 Random Forest
 -------------
@@ -385,7 +394,7 @@ Random Forest
 Let us train the decision tree model and find out the accuracy of the model for the training data.
 
 ``` r
-modelRandomForest <- randomForest(classe~., data=dt_train)
+modelRandomForest <- train(classe ~ ., method = "rf", data = dt_train, trControl = train_control)
 ```
 
 Now we will test the model by applying it onto the testing data that was randomly partitioned from the original training data.
@@ -399,33 +408,33 @@ confusionMatrix(predictRandomForest, dt_test$classe)
     ## 
     ##           Reference
     ## Prediction    A    B    C    D    E
-    ##          A 1116    3    0    0    0
-    ##          B    0  756   10    0    0
-    ##          C    0    0  674   10    0
-    ##          D    0    0    0  633    1
+    ##          A 1116    4    0    0    0
+    ##          B    0  754   12    0    0
+    ##          C    0    1  672   15    0
+    ##          D    0    0    0  628    1
     ##          E    0    0    0    0  720
     ## 
     ## Overall Statistics
     ##                                           
-    ##                Accuracy : 0.9939          
-    ##                  95% CI : (0.9909, 0.9961)
+    ##                Accuracy : 0.9916          
+    ##                  95% CI : (0.9882, 0.9942)
     ##     No Information Rate : 0.2845          
     ##     P-Value [Acc > NIR] : < 2.2e-16       
     ##                                           
-    ##                   Kappa : 0.9923          
+    ##                   Kappa : 0.9894          
     ##  Mcnemar's Test P-Value : NA              
     ## 
     ## Statistics by Class:
     ## 
     ##                      Class: A Class: B Class: C Class: D Class: E
-    ## Sensitivity            1.0000   0.9960   0.9854   0.9844   0.9986
-    ## Specificity            0.9989   0.9968   0.9969   0.9997   1.0000
-    ## Pos Pred Value         0.9973   0.9869   0.9854   0.9984   1.0000
-    ## Neg Pred Value         1.0000   0.9990   0.9969   0.9970   0.9997
+    ## Sensitivity            1.0000   0.9934   0.9825   0.9767   0.9986
+    ## Specificity            0.9986   0.9962   0.9951   0.9997   1.0000
+    ## Pos Pred Value         0.9964   0.9843   0.9767   0.9984   1.0000
+    ## Neg Pred Value         1.0000   0.9984   0.9963   0.9954   0.9997
     ## Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
-    ## Detection Rate         0.2845   0.1927   0.1718   0.1614   0.1835
-    ## Detection Prevalence   0.2852   0.1953   0.1744   0.1616   0.1835
-    ## Balanced Accuracy      0.9995   0.9964   0.9911   0.9921   0.9993
+    ## Detection Rate         0.2845   0.1922   0.1713   0.1601   0.1835
+    ## Detection Prevalence   0.2855   0.1953   0.1754   0.1603   0.1835
+    ## Balanced Accuracy      0.9993   0.9948   0.9888   0.9882   0.9993
 
 Accuracy of the random forest model is given below.
 
@@ -434,9 +443,9 @@ confusionMatrix(predictRandomForest, dt_test$classe)$overall["Accuracy"]
 ```
 
     ##  Accuracy 
-    ## 0.9938822
+    ## 0.9915881
 
-As the accuracy of the random forest model is very high, we will be using this model to predict the data from pml-testing.csv.
+The out of sample error with random forest is 1 - 0.9946 = 0.0054. As the accuracy of the random forest model is very high, we will be using this model to predict the data from pml-testing.csv.
 
 Predict the data
 ----------------
@@ -447,6 +456,5 @@ Below is the predited output of the classe variable for pml-testing.csv.
 predict(modelRandomForest, pml_testing)
 ```
 
-    ##  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 
-    ##  B  A  B  A  A  E  D  B  A  A  B  C  B  A  E  E  A  B  B  B 
+    ##  [1] B A B A A E D B A A B C B A E E A B B B
     ## Levels: A B C D E
