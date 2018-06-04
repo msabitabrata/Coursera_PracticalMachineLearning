@@ -4,18 +4,6 @@ author: "Sabitabrata Maity"
 date: "May 13, 2018"
 output: html_document
 ---
-<style type="text/css">
-body{ /* Normal  */
-   font-size: 12px;
-}
-h2{ /* Normal  */
-   font-size: 18px;
-}
-h3{ /* Normal  */
-   font-size: 15px;
-   font-weight : bold;
-}
-</style>
 
 ## Background
 
@@ -112,18 +100,25 @@ dt_train <- data_training[inTrain,]
 dt_test <- data_training[-inTrain,]
 ```
 
+## Setting Up Cross Validation
+
+We will use 5-fold cross validation to get an unbiased estimate of out of sample error.
+
+```{r}
+train_control <- trainControl(method="cv",number=5,allowParallel = TRUE)
+```
 ## Decision Tree
 
 Let us train the decision tree model and find out the accuracy of the model for the training data.
 
 ```{r}
-modelDecisionTree <- rpart(classe~., data=dt_train)
+modelDecisionTree <- train(classe~., data=dt_train, method = "rpart", trControl = train_control )
 ```
 
 Now we will test the model by applying it onto the testing data that was randomly partitioned from the original training data.
 
 ```{r}
-predictDecisionTree <- predict(modelDecisionTree, dt_test, type="class")
+predictDecisionTree <- predict(modelDecisionTree, dt_test)
 confusionMatrix(predictDecisionTree, dt_test$classe)
 ```
 
@@ -133,14 +128,14 @@ Accuracy of the decision tree model is given below.
 confusionMatrix(predictDecisionTree, dt_test$classe)$overall["Accuracy"]
 ```
 
-The accuracy of the decision tree algorithm is very low. Let us try some other algorithm to fit the model.
+The accuracy of the decision tree algorithm is very low and the out of sample error is 1 - 0.494 = 0.506. Let us try some other algorithm to fit the model.
 
 ## Random Forest
 
 Let us train the decision tree model and find out the accuracy of the model for the training data.
 
 ```{r}
-modelRandomForest <- randomForest(classe~., data=dt_train)
+modelRandomForest <- train(classe ~ ., method = "rf", data = dt_train, trControl = train_control)
 ```
 
 Now we will test the model by applying it onto the testing data that was randomly partitioned from the original training data.
@@ -156,7 +151,7 @@ Accuracy of the random forest model is given below.
 confusionMatrix(predictRandomForest, dt_test$classe)$overall["Accuracy"]
 ```
 
-As the accuracy of the random forest model is very high, we will be using this model to predict the data from pml-testing.csv.
+The out of sample error with random forest is 1 - 0.9946 = 0.0054. As the accuracy of the random forest model is very high, we will be using this model to predict the data from pml-testing.csv.
 
 ## Predict the data
 
