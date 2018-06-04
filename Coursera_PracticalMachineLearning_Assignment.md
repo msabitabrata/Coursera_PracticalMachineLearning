@@ -1,15 +1,3 @@
-<style type="text/css">
-body{ /* Normal  */
-   font-size: 12px;
-}
-h2{ /* Normal  */
-   font-size: 18px;
-}
-h3{ /* Normal  */
-   font-size: 15px;
-   font-weight : bold;
-}
-</style>
 Background
 ----------
 
