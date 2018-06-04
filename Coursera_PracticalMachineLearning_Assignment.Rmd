@@ -1,0 +1,168 @@
+---
+title: "Coursera_PracticalMachineLearning_Assignment"
+author: "Sabitabrata Maity"
+date: "May 13, 2018"
+output: html_document
+---
+<style type="text/css">
+body{ /* Normal  */
+   font-size: 12px;
+}
+h2{ /* Normal  */
+   font-size: 18px;
+}
+h3{ /* Normal  */
+   font-size: 15px;
+   font-weight : bold;
+}
+</style>
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+## Data
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+
+The data for this project come from this source: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har.
+
+## Overview
+
+From the HAR (Human Activity Recognition) project, we come to know that six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
+Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes. Participants were supervised by an experienced weight lifter to make sure the execution complied to the manner they were supposed to simulate. The exercises were performed by six male participants aged between 20-28 years, with little weight lifting experience. We made sure that all participants could easily simulate the mistakes in a safe and controlled manner by using a relatively light dumbbell (1.25kg).
+
+In this assignment, we were provided with the data from the subset of HAR data for building a predictive model and test the model.
+
+## Loading the Libraries
+
+We will be using the following libraries for this assignment.
+
+```{r message=FALSE}
+library(caret)
+library(rpart)
+library(e1071)
+library(randomForest)
+```
+
+## Loading the Data
+
+For this assignment, we have a training data (pml-training.csv) to build our model and a validation data (pml-testing.csv) on which our model will be applied to predict the output. It has been observed that the data contains blank strings ("") and some invalid numbers ("#DIV/0!"). We will consider those strins as NA. After loading the data, we will apply str function on the data to see the structures.
+
+```{r}
+if (!file.exists("pml-training.csv")) {
+  download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv" ,"pml-training.csv",method="auto")
+}
+if (!file.exists("pml-testing.csv")) {
+  download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv" ,"pml-testing.csv",method="auto")
+}
+pml_training <- read.csv("pml-training.csv", na.strings = c("#DIV/0!","","NA"))
+
+pml_testing <- read.csv("pml-testing.csv", na.strings = c("#DIV/0!","","NA"))
+
+str(pml_training)
+```
+
+## Cleaning the Data
+
+From the structure, it seems that the serial number (X), user_ _name, timestanp (raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp) and window (new_window, num_window) are the description fields of the data and they don't influence the data.
+
+```{r}
+data_training <- subset(pml_training, select = -c(X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window, num_window))
+
+```
+
+We can see from the data that few of the columns have NA value. Let us look into the data to find the proportion of NA values for the columns to the valid values. If the missing values for a column are completely at random or more than 95% of the data for a column is missing value, we will remove the coulmn.
+
+```{r}
+pMiss <- function(x){sum(is.na(x))/length(x) > .95}
+missingVector <- apply(data_training, 2, pMiss)
+missingVector
+```
+
+Exclude the columns that contains more than 95% missing value.
+
+```{r}
+data_training <- data_training[,names(missingVector[missingVector == FALSE])]
+```
+Now let us check, how many variables are there with near zero variance and if there is any we will investigate and exclude such columns.
+
+```{r}
+sum(nearZeroVar(data_training, saveMetrics=TRUE)$nzv)
+```
+
+As the sum of all the near zero variables are zero, we don't need to exclude any columns from the data set. 
+
+## Partitioning the Training Data
+
+We will be pratitioning the training data into two parts. We will use 80% of the randomly partitioned data to build the model and rest of the data (20%) to test the model. We will set the seed 12345 to replicate the scenarios in future.
+
+```{r}
+set.seed(12345)
+inTrain <- createDataPartition(data_training$classe, p = 0.8, list = FALSE)
+dt_train <- data_training[inTrain,]
+dt_test <- data_training[-inTrain,]
+```
+
+## Decision Tree
+
+Let us train the decision tree model and find out the accuracy of the model for the training data.
+
+```{r}
+modelDecisionTree <- rpart(classe~., data=dt_train)
+```
+
+Now we will test the model by applying it onto the testing data that was randomly partitioned from the original training data.
+
+```{r}
+predictDecisionTree <- predict(modelDecisionTree, dt_test, type="class")
+confusionMatrix(predictDecisionTree, dt_test$classe)
+```
+
+Accuracy of the decision tree model is given below.
+
+```{r}
+confusionMatrix(predictDecisionTree, dt_test$classe)$overall["Accuracy"]
+```
+
+The accuracy of the decision tree algorithm is very low. Let us try some other algorithm to fit the model.
+
+## Random Forest
+
+Let us train the decision tree model and find out the accuracy of the model for the training data.
+
+```{r}
+modelRandomForest <- randomForest(classe~., data=dt_train)
+```
+
+Now we will test the model by applying it onto the testing data that was randomly partitioned from the original training data.
+
+```{r}
+predictRandomForest <- predict(modelRandomForest, dt_test)
+confusionMatrix(predictRandomForest, dt_test$classe)
+```
+
+Accuracy of the random forest model is given below.
+
+```{r}
+confusionMatrix(predictRandomForest, dt_test$classe)$overall["Accuracy"]
+```
+
+As the accuracy of the random forest model is very high, we will be using this model to predict the data from pml-testing.csv.
+
+## Predict the data
+
+Below is the predited output of the classe variable for pml-testing.csv.
+
+```{r}
+predict(modelRandomForest, pml_testing)
+```
+
